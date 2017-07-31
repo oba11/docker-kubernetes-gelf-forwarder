@@ -1,0 +1,11 @@
+replicas: 1
+image: kubernetes-gelf-forwarder:latest
+imagePullPolicy: IfNotPresent
+env:
+  GELF_1_DEPLOYMENT: nginx-ingress
+  GELF_1_HOST: gelf.local
+  GELF_1_PORT: 12201
+  GELF_1_PARSE_NGINX: "yes"
+  GELF_2_DEPLOYMENT: kube-dns
+  GELF_2_HOST: gelf.local
+  GELF_2_PORT: 12201

@@ -1,0 +1,10 @@
+app:
+  build: ./
+  environment:
+    GELF_1_DEPLOYMENT:
+    GELF_1_HOST:
+    GELF_1_PORT:
+    GELF_1_PARSE_NGINX: "yes"
+    GELF_2_DEPLOYMENT:
+    GELF_2_HOST:
+    GELF_2_PORT:
