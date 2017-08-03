@@ -8,3 +8,4 @@ app:
     GELF_2_DEPLOYMENT:
     GELF_2_HOST:
     GELF_2_PORT:
+    JOURNAL_PATH:

@@ -9,3 +9,4 @@ env:
   GELF_2_DEPLOYMENT: kube-dns
   GELF_2_HOST: gelf.local
   GELF_2_PORT: 12201
+  JOURNAL_PATH: /run/log/journal

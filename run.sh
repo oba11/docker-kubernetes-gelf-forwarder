@@ -15,6 +15,30 @@ cat << EOF > /fluentd/etc/fluent.conf
   read_from_head true
 </source>
 
+<source>
+  @type systemd
+  tag kube-service
+  path ${JOURNAL_PATH:=/var/log/journal}
+  filters [{ "_SYSTEMD_UNIT": "kube-apiserver.service" },{ "_SYSTEMD_UNIT": "kube-controller-manager.service" },{ "_SYSTEMD_UNIT": "kube-scheduler.service" },{ "_SYSTEMD_UNIT": "kubelet.service" },{ "_SYSTEMD_UNIT": "kube-proxy.service" },{ "_SYSTEMD_UNIT": "localkube.service" }]
+  read_from_head true
+  <storage>
+    @type local
+    persistent true
+    path kube-proxy.pos
+  </storage>
+  <entry>
+    field_map {"MESSAGE": "message", "_PID": ["process", "pid"], "_CMDLINE": "process", "_COMM": "cmd"}
+    fields_strip_underscores true
+    fields_lowercase true
+  </entry>
+</source>
+
+<match kube-service>
+  @type gelf
+  host $GELF_1_HOST
+  port $GELF_1_PORT
+</match>
+
 <filter kubernetes.**>
   @type kubernetes_metadata
 </filter>
@@ -47,10 +71,10 @@ if [[ -n "$GELFPARSENGINX" ]]; then
 cat << EOF >> /fluentd/etc/fluent.conf
 <filter kubernetes.var.log.containers.$GELFDEPLOYMENT**>
   @type parser
-  format /^(?<domain>[^ ]*) (?<host>[^ ]*) \[(?<x_forwarded_for>[^\]]*)\] (?<server_port>[^ ]*) (?<user>[^ ]*) \[(?<time>[^\]]*)\] "(?:(?<method>\S+[^\"])(?: +(?<path>[^\"]*?)(?: +(?<protocol>\S*))?)?)?" (?<code>[^ ]*) (?<size>[^ ]*)(?: "(?<referer>[^\"]*)" "(?<agent>[^\"]*)")? (?<request_length>[^ ]*) (?<request_time>[^ ]*) (?:\[(?<proxy_upstream_name>[^\]]*)\] )?(?<upstream_addr>[^ ]*) (?<upstream_response_length>[^ ]*) (?<upstream_response_time>[^ ]*) (?<upstream_status>[^ ]*)$/
+  format /^(?<domain>[^ ]*) (?<remote_addr>[^ ]*) \[(?<x_forwarded_for>[^\]]*)\] (?<server_port>[^ ]*) (?<user>[^ ]*) \[(?<time>[^\]]*)\] "(?:(?<method>\S+[^\"])(?: +(?<path>[^\"]*?)(?: +(?<protocol>\S*))?)?)?" (?<status>[^ ]*) (?<size>[^ ]*)(?: "(?<referer>[^\"]*)" "(?<user_agent>[^\"]*)")? (?<request_length>[^ ]*) (?<request_time>[^ ]*) (?:\[(?<proxy_upstream_name>[^\]]*)\] )?(?<upstream_addr>[^ ]*) (?<upstream_response_length>[^ ]*) (?<upstream_response_time>[^ ]*) (?<upstream_status>[^ ]*)$/
   time_format %d/%b/%Y:%H:%M:%S %z
   key_name message
-  types server_port:integer,code:integer,size:integer,request_length:integer,request_time:float,upstream_response_length:integer,upstream_response_time:float,upstream_status:integer
+  types server_port:integer,status:integer,size:integer,request_length:integer,request_time:float,upstream_response_length:integer,upstream_response_time:float,upstream_status:integer
   reserve_data yes
   suppress_parse_error_log true
 </filter>

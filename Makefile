@@ -22,3 +22,5 @@ logs:
 
 status:
 	helm status $(APP)
+
+clean: delete

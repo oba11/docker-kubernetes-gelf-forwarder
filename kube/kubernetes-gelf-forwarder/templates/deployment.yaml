@@ -40,6 +40,9 @@ spec:
           - name: minikube-containers
             mountPath: /mnt/sda1/var/lib/docker/containers
             readOnly: true
+          - name: journal-log
+            mountPath: /run/log/journal
+            readOnly: true
       volumes:
         - name: var-log
           hostPath:
@@ -47,3 +50,6 @@ spec:
         - name: minikube-containers
           hostPath:
             path: /mnt/sda1/var/lib/docker/containers
+        - name: journal-log
+          hostPath:
+            path: /run/log/journal
