@@ -1,14 +1,16 @@
 #!/bin/sh -e
 
+mkdir -p /tmp/fluentd
+
 cat << EOF > /fluentd/etc/fluent.conf
 <match fluent.**>
-  type null
+  @type null
 </match>
 
 <source>
   @type tail
   path /var/log/containers/*.log
-  pos_file /tmp/fluentd-containers.log.pos
+  pos_file /tmp/fluentd/containers.log.pos
   time_format %Y-%m-%dT%H:%M:%S.%NZ
   tag kubernetes.*
   format json
@@ -24,7 +26,7 @@ cat << EOF > /fluentd/etc/fluent.conf
   <storage>
     @type local
     persistent true
-    path kube-proxy.pos
+    path /tmp/fluentd/kube-service.pos
   </storage>
   <entry>
     field_map {"MESSAGE": "message", "_PID": ["process", "pid"], "_CMDLINE": "process", "_COMM": "cmd"}
@@ -37,6 +39,7 @@ cat << EOF > /fluentd/etc/fluent.conf
   @type gelf
   host $GELF_1_HOST
   port $GELF_1_PORT
+  flush_interval 3s
 </match>
 
 <filter kubernetes.**>
@@ -52,7 +55,7 @@ cat << EOF > /fluentd/etc/fluent.conf
     tag kubernetes
     severity \${record["stream"] == 'stderr' ? 'err' : 'info'}
     source \${record["kubernetes"]["host"]}
-    hostname \${record["kubernetes"]["pod_name"] || tag_parts[4]}
+    hostname \${record["kubernetes"]["host"] || tag_parts[4]}
   </record>
   remove_keys log,stream,docker,kubernetes,labels
 </filter>
@@ -65,9 +68,9 @@ GELFDEPLOYMENT=$(eval echo $(printf "\$GELF_${i}_DEPLOYMENT"))
 GELFHOST=$(eval echo $(printf "\$GELF_${i}_HOST"))
 GELFPORT=$(eval echo $(printf "\$GELF_${i}_PORT"))
 GELFPARSENGINX=$(eval echo $(printf "\$GELF_${i}_PARSE_NGINX"))
-if [[ -n "$GELFDEPLOYMENT" ]] && [[ -n "$GELFHOST" ]] && [[ -n "$GELFPORT" ]]; then
+if [ -n "$GELFDEPLOYMENT" ] && [ -n "$GELFHOST" ] && [ -n "$GELFPORT" ]; then
 
-if [[ -n "$GELFPARSENGINX" ]]; then
+if [ -n "$GELFPARSENGINX" ]; then
 cat << EOF >> /fluentd/etc/fluent.conf
 <filter kubernetes.var.log.containers.$GELFDEPLOYMENT**>
   @type parser
@@ -76,7 +79,7 @@ cat << EOF >> /fluentd/etc/fluent.conf
   key_name message
   types server_port:integer,status:integer,size:integer,request_length:integer,request_time:float,upstream_response_length:integer,upstream_response_time:float,upstream_status:integer
   reserve_data yes
-  suppress_parse_error_log true
+  suppress_parse_error_log yes
 </filter>
 
 EOF
@@ -87,6 +90,12 @@ cat << EOF >> /fluentd/etc/fluent.conf
   @type gelf
   host $GELFHOST
   port $GELFPORT
+  flush_interval 3s
+  buffer_queue_limit ${BUFFER_QUEUE_LIMIT:=4096}
+  buffer_chunk_limit ${BUFFER_CHUNK_LIMIT:=2048m}
+  max_retry_wait 30
+  disable_retry_limit
+  num_threads ${NUM_THREADS:=8}
 </match>
 
 EOF
